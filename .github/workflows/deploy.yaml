@@ -8,8 +8,6 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
     steps:
       - name: Checkout Code
@@ -21,6 +19,12 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Install eksctl
+        run: |
+          curl --silent --location "https://github.com/weaveworks/eksctl/releases/latest/download/eksctl_$(uname -s)_amd64.tar.gz" | tar xz -C /tmp
+          sudo mv /tmp/eksctl /usr/local/bin
+          eksctl version
 
       - name: Install kubectl
         uses: azure/setup-kubectl@v3
@@ -34,19 +38,26 @@ jobs:
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
       - name: Build and Push Docker Image
+        env:
+          IMAGE_TAG: ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
         run: |
-          docker build -t ${DOCKER_IMAGE} .
-          docker push ${DOCKER_IMAGE}
+          docker build -t $IMAGE_TAG .
+          docker push $IMAGE_TAG
 
-      - name: Connect to EKS
+      - name: Update kube config
         run: |
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
             --name ${{ secrets.EKS_CLUSTER_NAME }}
 
+      - name: Verify kubectl access
+        run: |
+          kubectl get nodes
+
       - name: Deploy to EKS
         run: |
-          export DOCKER_IMAGE=${DOCKER_IMAGE}
-          kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply --validate=false -f k8s/service.yaml
+          sed -i 's|${DOCKERHUB_USERNAME}|${{ secrets.DOCKERHUB_USERNAME }}|g' k8s/deployment.yaml
+          kubectl apply -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml
+          kubectl rollout restart deployment/time-display-app
           kubectl rollout status deployment/time-display-app --timeout=180s
