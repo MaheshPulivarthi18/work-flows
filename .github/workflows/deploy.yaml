@@ -33,7 +33,7 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
-         - name: Update Kubeconfig
+      - name: Update Kubeconfig # ✅ FIXED: Corrected indentation
         run: |
           aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
 
@@ -41,9 +41,8 @@ jobs:
         run: |
           kubectl cluster-info
 
-
       - name: Deploy to EKS
         run: |
           kubectl apply --validate=false -f k8s/deployment.yaml
           kubectl apply --validate=false -f k8s/service.yaml
-          kubectl rollout status deployment/time-display-app
+          kubectl rollout status deployment/time-app
