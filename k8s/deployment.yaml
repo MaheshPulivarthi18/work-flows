@@ -14,7 +14,7 @@ spec:
     spec:
       containers:
         - name: time-display-app
-          image: ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
+          image: ${DOCKER_IMAGE}
           imagePullPolicy: Always
           ports:
             - containerPort: 3000
