@@ -1,4 +1,4 @@
-name: Deploy to AWS EKS
+name: Deploy Time App to AWS EKS
 
 on:
   push:
@@ -28,8 +28,8 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/my-app:latest
+          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest .
+          docker push ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
       - name: Update Kubeconfig
         run: aws eks update-kubeconfig --name ${{ secrets.EKS_CLUSTER_NAME }}
@@ -38,4 +38,4 @@ jobs:
         run: |
           kubectl apply -f k8s/deployment.yaml
           kubectl apply -f k8s/service.yaml
-          kubectl rollout status deployment/my-app
+          kubectl rollout status deployment/time-app

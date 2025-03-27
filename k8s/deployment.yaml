@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: time-display-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: time-display-app
+  template:
+    metadata:
+      labels:
+        app: time-display-app
+    spec:
+      containers:
+        - name: time-display-app
+          image: time-display-app:latest
+          ports:
+            - containerPort: 3000
