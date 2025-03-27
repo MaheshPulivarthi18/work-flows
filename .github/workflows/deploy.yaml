@@ -34,7 +34,8 @@ jobs:
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
          - name: Update Kubeconfig
-        run: aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+        run: |
+          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Check Connection
         run: kubectl cluster-info
