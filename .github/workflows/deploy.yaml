@@ -38,7 +38,8 @@ jobs:
           aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Check Connection
-        run: kubectl cluster-info
+        run: |
+          kubectl cluster-info
 
 
       - name: Deploy to EKS
