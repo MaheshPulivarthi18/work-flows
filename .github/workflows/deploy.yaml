@@ -8,6 +8,8 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      DOCKER_IMAGE: ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
     steps:
       - name: Checkout Code
@@ -33,21 +35,18 @@ jobs:
 
       - name: Build and Push Docker Image
         run: |
-          docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest .
-          docker push ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
+          docker build -t ${DOCKER_IMAGE} .
+          docker push ${DOCKER_IMAGE}
 
       - name: Connect to EKS
         run: |
-          aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} > token.txt
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }} \
-            --kubeconfig kubeconfig.yaml
+            --name ${{ secrets.EKS_CLUSTER_NAME }}
 
       - name: Deploy to EKS
-        env:
-          KUBECONFIG: kubeconfig.yaml
         run: |
-          envsubst < k8s/deployment.yaml | kubectl apply -f -
-          envsubst < k8s/service.yaml | kubectl apply -f -
-          kubectl rollout status deployment/time-display-app
+          export DOCKER_IMAGE=${DOCKER_IMAGE}
+          kubectl apply --validate=false -f k8s/deployment.yaml
+          kubectl apply --validate=false -f k8s/service.yaml
+          kubectl rollout status deployment/time-display-app --timeout=180s
