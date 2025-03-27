@@ -13,14 +13,17 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
-          role-duration-seconds: 1200
+
+      - name: Install kubectl
+        uses: azure/setup-kubectl@v3
+        with:
+          version: "latest"
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -33,12 +36,18 @@ jobs:
           docker build -t ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest .
           docker push ${{ secrets.DOCKERHUB_USERNAME }}/time-app:latest
 
-      - name: Update Kubeconfig # ✅ FIXED: Corrected indentation
+      - name: Connect to EKS
         run: |
-          aws eks update-kubeconfig --region ${{ secrets.AWS_REGION }} --name ${{ secrets.EKS_CLUSTER_NAME }}
+          aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} > token.txt
+          aws eks update-kubeconfig \
+            --region ${{ secrets.AWS_REGION }} \
+            --name ${{ secrets.EKS_CLUSTER_NAME }} \
+            --kubeconfig kubeconfig.yaml
 
       - name: Deploy to EKS
+        env:
+          KUBECONFIG: kubeconfig.yaml
         run: |
-          kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply --validate=false -f k8s/service.yaml
-          kubectl rollout status deployment/time-app
+          envsubst < k8s/deployment.yaml | kubectl apply -f -
+          envsubst < k8s/service.yaml | kubectl apply -f -
+          kubectl rollout status deployment/time-display-app
