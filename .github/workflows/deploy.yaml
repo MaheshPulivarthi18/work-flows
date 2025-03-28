@@ -19,7 +19,8 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
-          mask-aws-account-id: false
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-duration-seconds: 1200
 
       - name: Login to Docker Hub
         uses: docker/login-action@v3
@@ -42,21 +43,15 @@ jobs:
       - name: Configure kubectl and update kubeconfig
         run: |
           aws sts get-caller-identity
-          aws eks describe-cluster --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
+          aws eks get-token --cluster-name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
-            --name ${{ secrets.EKS_CLUSTER_NAME }}
-
-      - name: Verify Kubernetes access
-        run: |
-          kubectl config current-context
-          kubectl cluster-info
+            --name ${{ secrets.EKS_CLUSTER_NAME }} \
+            --role-arn ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Deploy to EKS
         run: |
-          kubectl version --client
-          kubectl apply -f k8s/deployment.yaml || kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply -f k8s/service.yaml || kubectl apply --validate=false -f k8s/service.yaml
-          sleep 10
+          kubectl apply --validate=false -f k8s/deployment.yaml
+          kubectl apply --validate=false -f k8s/service.yaml
           kubectl get pods
           kubectl get svc
