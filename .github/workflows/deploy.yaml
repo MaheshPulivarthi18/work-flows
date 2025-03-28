@@ -39,18 +39,24 @@ jobs:
         with:
           version: "latest"
 
-      - name: Configure kubectl
+      - name: Configure kubectl and update kubeconfig
         run: |
           aws sts get-caller-identity
+          aws eks describe-cluster --name ${{ secrets.EKS_CLUSTER_NAME }} --region ${{ secrets.AWS_REGION }}
           aws eks update-kubeconfig \
             --region ${{ secrets.AWS_REGION }} \
             --name ${{ secrets.EKS_CLUSTER_NAME }}
 
+      - name: Verify Kubernetes access
+        run: |
+          kubectl config current-context
+          kubectl cluster-info
+
       - name: Deploy to EKS
         run: |
-          kubectl version
-          kubectl get nodes || true
-          kubectl apply --validate=false -f k8s/deployment.yaml
-          kubectl apply --validate=false -f k8s/service.yaml
+          kubectl version --client
+          kubectl apply -f k8s/deployment.yaml || kubectl apply --validate=false -f k8s/deployment.yaml
+          kubectl apply -f k8s/service.yaml || kubectl apply --validate=false -f k8s/service.yaml
+          sleep 10
           kubectl get pods
           kubectl get svc
